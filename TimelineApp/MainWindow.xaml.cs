@@ -1,22 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Channels;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace TimelineApp
 {
@@ -25,6 +12,8 @@ namespace TimelineApp
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private TimeSpan timeValue;
         public TimeSpan TimeValue
         {
@@ -40,6 +29,11 @@ namespace TimelineApp
         }
 
         private readonly Clock clock;
+        private TimeSpan maxVal = TimeSpan.MaxValue;
+        private readonly object syncRoot = new object();
+
+        private int count = 0;
+        private bool isReset;
 
         public MainWindow()
         {
@@ -47,41 +41,58 @@ namespace TimelineApp
 
             clock = new Clock();
 
-            clock.NewTimeValue += (sender, arg) =>
+            clock.NewTimeValue += ClockOnNewTimeValue;
+            clock.ResetComplete += (sender, args) =>
             {
-                TimeValue = arg.Time;
-
-                if (timeValue < TimeSpan.FromSeconds(.1))
-                {
-                    maxVal = TimeSpan.MaxValue;
-                }
-
-                if (arg.Time > maxVal)
-                {
-                    Debug.Print($"{arg.Time}");
-                }
+                isReset = false;
             };
 
             clock.Play();
         }
 
-        private TimeSpan maxVal = TimeSpan.MaxValue;
+        private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
+        {
+            lock (syncRoot)
+            {
+                TimeValue = arg.Time;
+
+                UpdateUI();
+
+                if (arg.Time > maxVal && !isReset)
+                {
+                    Debug.Print($"{arg.Time}");
+                }
+            }
+        }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            maxVal = TimeValue;
-            ComplexTimelineComputation();
-            clock.Reset();
+            lock (syncRoot)
+            {
+                maxVal = TimeValue;
+                if (ComplexTimelineComputation())
+                {
+                    clock.Reset();
+                    isReset = true;
+                }
+            }
         }
 
-        private void ComplexTimelineComputation()
+        private static bool ComplexTimelineComputation()
         {
             Thread.Sleep(10);
+            return true;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        private void UpdateUI()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                count++;
+            });
+        }
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

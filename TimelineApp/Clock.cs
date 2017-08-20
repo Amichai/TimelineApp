@@ -7,6 +7,7 @@ namespace TimelineApp
     internal sealed class Clock
     {
         public event EventHandler<NewTimeValueEventArg> NewTimeValue;
+        public event EventHandler<EventArgs> ResetComplete;
 
         private TimeSpan? currentTime;
         private DateTime? lastUpdate;
@@ -71,6 +72,16 @@ namespace TimelineApp
         public void Reset()
         {
             currentTime = TimeSpan.Zero;
+        }
+
+        private void NotifyResetComplete()
+        {
+            OnResetComplete(new EventArgs());
+        }
+
+        private void OnResetComplete(EventArgs eventArgs)
+        {
+            ResetComplete?.Invoke(this, eventArgs);
         }
     }
 }
