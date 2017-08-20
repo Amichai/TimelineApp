@@ -48,6 +48,22 @@ namespace TimelineApp
             };
 
             clock.Play();
+
+            var tester = new BlackBoxTester(this);
+            tester.Start();
+        }
+
+        public void ButtonClick()
+        {
+            lock (syncRoot)
+            {
+                maxVal = TimeValue;
+                if (ComplexTimelineComputation())
+                {
+                    clock.Reset();
+                    isReset = true;
+                }
+            }
         }
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
@@ -67,15 +83,7 @@ namespace TimelineApp
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            lock (syncRoot)
-            {
-                maxVal = TimeValue;
-                if (ComplexTimelineComputation())
-                {
-                    clock.Reset();
-                    isReset = true;
-                }
-            }
+            ButtonClick();
         }
 
         private static bool ComplexTimelineComputation()
