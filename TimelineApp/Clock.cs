@@ -13,6 +13,12 @@ namespace TimelineApp
         private DateTime? lastUpdate;
         private bool isPlaying;
 
+        public int ResetCounter
+        {
+            get;
+            private set;
+        }
+
         public Clock()
         {
             new TaskFactory().StartNew(() =>
@@ -40,6 +46,12 @@ namespace TimelineApp
             isPlaying = true;
         }
 
+        public void Reset()
+        {
+            currentTime = TimeSpan.Zero;
+            ResetCounter++;
+        }
+
         private void Tick()
         {
             if (!isPlaying)
@@ -61,17 +73,12 @@ namespace TimelineApp
 
         private void NotifyNewTimeValue()
         {
-            OnNewTimeValue(new NewTimeValueEventArg(currentTime.Value));
+            OnNewTimeValue(new NewTimeValueEventArg(currentTime.Value, ResetCounter));
         }
 
         private void OnNewTimeValue(NewTimeValueEventArg eventArgs)
         {
             NewTimeValue?.Invoke(this, eventArgs);
-        }
-
-        public void Reset()
-        {
-            currentTime = TimeSpan.Zero;
         }
 
         private void NotifyResetComplete()

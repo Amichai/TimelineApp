@@ -9,9 +9,15 @@ namespace TimelineApp
             get;
         }
 
-        public NewTimeValueEventArg(TimeSpan time)
+        public int ResetCount
+        {
+            get;
+        }
+
+        public NewTimeValueEventArg(TimeSpan time, int resetCount)
         {
             Time = time;
+            ResetCount = resetCount;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace TimelineApp
             {
                 while (true)
                 {
-                    Thread.Sleep(10);
+                    Thread.Sleep(500);
                     window.Dispatcher.Invoke(() =>
                     {
                         window.ButtonClick();

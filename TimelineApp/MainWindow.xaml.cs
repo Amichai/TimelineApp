@@ -1,7 +1,9 @@
 ﻿using System;
+using System.CodeDom;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.Remoting.Channels;
 using System.Threading;
 using System.Windows;
 
@@ -30,10 +32,10 @@ namespace TimelineApp
 
         private readonly Clock clock;
         private TimeSpan maxVal = TimeSpan.MaxValue;
-        private readonly object syncRoot = new object();
 
         private int count = 0;
-        private bool isReset;
+
+        private readonly object @lock = new object();
 
         public MainWindow()
         {
@@ -42,10 +44,7 @@ namespace TimelineApp
             clock = new Clock();
 
             clock.NewTimeValue += ClockOnNewTimeValue;
-            clock.ResetComplete += (sender, args) =>
-            {
-                isReset = false;
-            };
+            //clock.ResetComplete += (sender, arg) => maxVal = TimeSpan.MaxValue;
 
             clock.Play();
 
@@ -55,29 +54,38 @@ namespace TimelineApp
 
         public void ButtonClick()
         {
-            lock (syncRoot)
+            if (ComplexTimelineComputation())
             {
-                maxVal = TimeValue;
-                if (ComplexTimelineComputation())
+                lock (@lock)
                 {
+                    maxVal = TimeValue;
                     clock.Reset();
-                    isReset = true;
                 }
             }
         }
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
         {
-            lock (syncRoot)
+            lock (@lock)
             {
-                TimeValue = arg.Time;
-
-                UpdateUI();
-
-                if (arg.Time > maxVal && !isReset)
+                if (arg.ResetCount != clock.ResetCounter)
                 {
-                    Debug.Print($"{arg.Time}");
+                    return;
                 }
+            }
+
+            TimeValue = arg.Time;
+
+            UpdateUI();
+
+            if (arg.Time < TimeSpan.FromMilliseconds(50))
+            {
+                maxVal = TimeSpan.MaxValue;
+            }
+
+            if (arg.Time > maxVal)
+            {
+                throw new Exception("Spurious time value");
             }
         }
 
@@ -88,7 +96,7 @@ namespace TimelineApp
 
         private static bool ComplexTimelineComputation()
         {
-            Thread.Sleep(10);
+            Thread.Sleep(100);
             return true;
         }
 
