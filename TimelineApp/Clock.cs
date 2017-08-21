@@ -20,16 +20,10 @@ namespace TimelineApp
             private set;
         }
 
+        private readonly Timer timer;
         public Clock()
         {
-            new TaskFactory().StartNew(() =>
-            {
-                while (true)
-                {
-                    Tick();
-                    Thread.Sleep(10);
-                }
-            }, TaskCreationOptions.LongRunning);
+            timer = new Timer(state => Tick(), null, 0, 10);
         }
 
         public void Seek(TimeSpan time)
@@ -47,30 +41,49 @@ namespace TimelineApp
             IsPlaying = true;
         }
 
-        public void Reset()
+        private bool resetInFlight;
+
+        public TimeSpan Reset()
         {
-            currentTime = TimeSpan.Zero;
-            ResetCounter++;
+            lock (@lock)
+            {
+                var val = currentTime.Value;
+                currentTime = TimeSpan.Zero;
+                ResetCounter++;
+                resetInFlight = true;
+                return val;
+            }
         }
 
         private void Tick()
         {
-            if (!IsPlaying)
+            lock (@lock)
             {
-                lastUpdate = null;
-                return;
-            }
+                if (!IsPlaying)
+                {
+                    lastUpdate = null;
+                    return;
+                }
 
-            if (currentTime == null)
-            {
-                currentTime = TimeSpan.Zero;
-            }
+                if (currentTime == null)
+                {
+                    currentTime = TimeSpan.Zero;
+                }
 
-            var diff = DateTime.Now - (lastUpdate ?? DateTime.Now);
-            currentTime += diff;
-            lastUpdate = DateTime.Now;
-            NotifyNewTimeValue();
+                if (resetInFlight)
+                {
+                    NotifyResetComplete();
+                    resetInFlight = false;
+                }
+
+                var diff = DateTime.Now - (lastUpdate ?? DateTime.Now);
+                currentTime += diff;
+                lastUpdate = DateTime.Now;
+                NotifyNewTimeValue();
+            }
         }
+
+        private readonly object @lock = new object();
 
         private void NotifyNewTimeValue()
         {

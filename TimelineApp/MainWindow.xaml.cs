@@ -32,8 +32,6 @@ namespace TimelineApp
 
         private int count = 0;
 
-        private readonly object @lock = new object();
-
         public MainWindow()
         {
             InitializeComponent();
@@ -41,7 +39,7 @@ namespace TimelineApp
             clock = new Clock();
 
             clock.NewTimeValue += ClockOnNewTimeValue;
-            //clock.ResetComplete += (sender, arg) => maxVal = TimeSpan.MaxValue;
+            clock.ResetComplete += (sender, arg) => maxVal = TimeSpan.MaxValue;
 
             clock.Play();
 
@@ -53,36 +51,24 @@ namespace TimelineApp
         {
             if (ComplexTimelineComputation())
             {
-                lock (@lock)
-                {
-                    maxVal = TimeValue;
-                    clock.Reset();
-                }
+                maxVal = clock.Reset();
             }
         }
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
         {
-            lock (@lock)
+            if (arg.ResetCount != clock.ResetCounter)
             {
-                if (arg.ResetCount != clock.ResetCounter)
-                {
-                    return;
-                }
+                return;
+            }
 
-                TimeValue = arg.Time;
+            TimeValue = arg.Time;
 
-                UpdateUI();
+            UpdateUI();
 
-                if (arg.Time < TimeSpan.FromMilliseconds(50))
-                {
-                    maxVal = TimeSpan.MaxValue;
-                }
-
-                if (arg.Time > maxVal)
-                {
-                    throw new Exception("Spurious time value");
-                }
+            if (arg.Time > maxVal)
+            {
+                throw new Exception("Spurious time value");
             }
         }
 

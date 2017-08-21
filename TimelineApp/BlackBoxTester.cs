@@ -8,7 +8,7 @@ namespace TimelineApp
     {
         private readonly MainWindow window;
         private int count = 0;
-
+        private Timer t1, t2;
         public BlackBoxTester(MainWindow window)
         {
             this.window = window;
@@ -16,30 +16,22 @@ namespace TimelineApp
 
         public void Start()
         {
-            new TaskFactory().StartNew(() =>
+            t1 = new Timer(state =>
             {
-                while (true)
+                window.Dispatcher.Invoke(() =>
                 {
-                    Thread.Sleep(500);
-                    window.Dispatcher.Invoke(() =>
-                    {
-                        window.Reset();
-                    });
-                }
-            }, TaskCreationOptions.LongRunning);
+                    window.Reset();
+                });
+            }, null, 0, 500);
 
-            new TaskFactory().StartNew(() =>
+            t2 = new Timer(state =>
             {
-                while (true)
+                var task = Task.Run(() => TestForDeadlock());
+                if (!task.Wait(TimeSpan.FromSeconds(1)))
                 {
-                    Thread.Sleep(50);
-                    var task = Task.Run(() => TestForDeadlock());
-                    if (!task.Wait(TimeSpan.FromSeconds(1)))
-                    {
-                        Environment.FailFast("Deadlock");
-                    }
+                    Environment.FailFast("Deadlock");
                 }
-            }, TaskCreationOptions.LongRunning);
+            }, null, 0, 50);
         }
 
         private void TestForDeadlock()
