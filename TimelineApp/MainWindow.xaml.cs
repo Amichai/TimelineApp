@@ -49,7 +49,7 @@ namespace TimelineApp
             tester.Start();
         }
 
-        public void ButtonClick()
+        public void Reset()
         {
             if (ComplexTimelineComputation())
             {
@@ -84,12 +84,11 @@ namespace TimelineApp
                     throw new Exception("Spurious time value");
                 }
             }
-
         }
 
-        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        private void Reset_OnClick(object sender, RoutedEventArgs e)
         {
-            ButtonClick();
+            Reset();
         }
 
         private static bool ComplexTimelineComputation()
@@ -109,6 +108,18 @@ namespace TimelineApp
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void Pause_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (clock.IsPlaying)
+            {
+                clock.Pause();
+            }
+            else
+            {
+                clock.Play();
+            }
         }
     }
 }

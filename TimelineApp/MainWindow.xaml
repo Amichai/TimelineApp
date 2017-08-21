@@ -10,7 +10,8 @@
     <Grid>
         <StackPanel>
             <TextBlock Text="{Binding TimeValue}"></TextBlock>
-            <Button Click="ButtonBase_OnClick">Reset</Button>
+            <Button Click="Reset_OnClick">Reset</Button>
+            <Button Click="Pause_OnClick">Play/Pause</Button>
         </StackPanel>
     </Grid>
 </Window>

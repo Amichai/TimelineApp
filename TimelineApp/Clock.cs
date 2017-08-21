@@ -11,7 +11,8 @@ namespace TimelineApp
 
         private TimeSpan? currentTime;
         private DateTime? lastUpdate;
-        private bool isPlaying;
+
+        public bool IsPlaying;
 
         public int ResetCounter
         {
@@ -38,12 +39,12 @@ namespace TimelineApp
 
         public void Pause()
         {
-            isPlaying = false;
+            IsPlaying = false;
         }
 
         public void Play()
         {
-            isPlaying = true;
+            IsPlaying = true;
         }
 
         public void Reset()
@@ -54,7 +55,7 @@ namespace TimelineApp
 
         private void Tick()
         {
-            if (!isPlaying)
+            if (!IsPlaying)
             {
                 lastUpdate = null;
                 return;

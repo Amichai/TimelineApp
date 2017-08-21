@@ -23,7 +23,7 @@ namespace TimelineApp
                     Thread.Sleep(500);
                     window.Dispatcher.Invoke(() =>
                     {
-                        window.ButtonClick();
+                        window.Reset();
                     });
                 }
             }, TaskCreationOptions.LongRunning);
