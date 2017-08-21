@@ -1,9 +1,6 @@
 ﻿using System;
-using System.CodeDom;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Channels;
 using System.Threading;
 using System.Windows;
 
@@ -72,21 +69,22 @@ namespace TimelineApp
                 {
                     return;
                 }
+
+                TimeValue = arg.Time;
+
+                UpdateUI();
+
+                if (arg.Time < TimeSpan.FromMilliseconds(50))
+                {
+                    maxVal = TimeSpan.MaxValue;
+                }
+
+                if (arg.Time > maxVal)
+                {
+                    throw new Exception("Spurious time value");
+                }
             }
 
-            TimeValue = arg.Time;
-
-            UpdateUI();
-
-            if (arg.Time < TimeSpan.FromMilliseconds(50))
-            {
-                maxVal = TimeSpan.MaxValue;
-            }
-
-            if (arg.Time > maxVal)
-            {
-                throw new Exception("Spurious time value");
-            }
         }
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
@@ -102,10 +100,10 @@ namespace TimelineApp
 
         private void UpdateUI()
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(new Action(() =>
             {
                 count++;
-            });
+            }));
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
