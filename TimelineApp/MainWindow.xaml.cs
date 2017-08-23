@@ -74,7 +74,7 @@ namespace TimelineApp
             TimeValue = arg.Time;
         }
 
-        private void Reset_OnClick(object sender, RoutedEventArgs e)
+        private void Seek_OnClick(object sender, RoutedEventArgs e)
         {
             Seek();
         }
