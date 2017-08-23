@@ -16,6 +16,7 @@ namespace TimelineApp
         private readonly Timer timer;
         private TimeSpan? currentTime;
         private DateTime? lastUpdate;
+        private readonly object @lock = new object();
 
         public Clock()
         {
@@ -24,9 +25,12 @@ namespace TimelineApp
 
         public void Seek(TimeSpan time)
         {
-            IsPlaying = false;
-            currentTime = time;
-            NotifyNewTimeValue();
+            lock (@lock)
+            {
+                IsPlaying = false;
+                currentTime = time;
+                NotifyNewTimeValue();
+            }
         }
 
         public void Pause()
@@ -41,21 +45,24 @@ namespace TimelineApp
 
         private void Tick()
         {
-            if (!IsPlaying)
+            lock (@lock)
             {
-                lastUpdate = null;
-                return;
-            }
+                if (!IsPlaying)
+                {
+                    lastUpdate = null;
+                    return;
+                }
 
-            if (currentTime == null)
-            {
-                currentTime = TimeSpan.Zero;
-            }
+                if (currentTime == null)
+                {
+                    currentTime = TimeSpan.Zero;
+                }
 
-            var diff = DateTime.Now - (lastUpdate ?? DateTime.Now);
-            currentTime += diff;
-            lastUpdate = DateTime.Now;
-            NotifyNewTimeValue();
+                var diff = DateTime.Now - (lastUpdate ?? DateTime.Now);
+                currentTime += diff;
+                lastUpdate = DateTime.Now;
+                NotifyNewTimeValue();
+            }
         }
 
         private void NotifyNewTimeValue()
