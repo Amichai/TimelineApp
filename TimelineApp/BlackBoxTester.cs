@@ -20,7 +20,9 @@ namespace TimelineApp
             {
                 window.Dispatcher.Invoke(() =>
                 {
-                    window.Reset();
+                    window.Seek();
+                    Thread.Sleep(10);
+                    window.PlayPause();
                 });
             }, null, 0, 500);
 

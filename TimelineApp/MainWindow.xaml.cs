@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows;
@@ -30,8 +31,6 @@ namespace TimelineApp
         private readonly Clock clock;
         private TimeSpan maxVal = TimeSpan.MaxValue;
 
-        private int count = 0;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -39,56 +38,45 @@ namespace TimelineApp
             clock = new Clock();
 
             clock.NewTimeValue += ClockOnNewTimeValue;
-            clock.ResetComplete += (sender, arg) => maxVal = TimeSpan.MaxValue;
 
             clock.Play();
-
-            var tester = new BlackBoxTester(this);
-            tester.Start();
         }
 
-        public void Reset()
+        public void PlayPause()
         {
-            if (ComplexTimelineComputation())
+            if (clock.IsPlaying)
             {
-                maxVal = clock.Reset();
+                clock.Pause();
             }
+            else
+            {
+                maxVal = TimeSpan.MaxValue;
+                clock.Play();
+            }
+        }
+
+        public void Seek()
+        {
+            var seekTime = TimeSpan.FromSeconds(1);
+            clock.Seek(seekTime);
+            maxVal = seekTime;
         }
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
         {
-            if (arg.ResetCount != clock.ResetCounter)
-            {
-                return;
-            }
-
-            TimeValue = arg.Time;
-
-            UpdateUI();
+            Thread.Sleep(80);
 
             if (arg.Time > maxVal)
             {
-                throw new Exception("Spurious time value");
+                Debug.Print("Spurious time value");
             }
+
+            TimeValue = arg.Time;
         }
 
         private void Reset_OnClick(object sender, RoutedEventArgs e)
         {
-            Reset();
-        }
-
-        private static bool ComplexTimelineComputation()
-        {
-            Thread.Sleep(100);
-            return true;
-        }
-
-        private void UpdateUI()
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                count++;
-            }));
+            Seek();
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -98,14 +86,7 @@ namespace TimelineApp
 
         private void Pause_OnClick(object sender, RoutedEventArgs e)
         {
-            if (clock.IsPlaying)
-            {
-                clock.Pause();
-            }
-            else
-            {
-                clock.Play();
-            }
+            PlayPause();
         }
     }
 }
