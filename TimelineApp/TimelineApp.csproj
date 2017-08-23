@@ -71,6 +71,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MultiThreadingSeekFilter.cs" />
     <Compile Include="NewTimeValueEventArg.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>

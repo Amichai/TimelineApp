@@ -14,9 +14,13 @@ namespace TimelineApp
             private set;
         }
 
-        private TimeSpan? currentTime;
+        public TimeSpan? CurrentTime
+        {
+            get;
+            private set;
+        }
+
         private DateTime? lastUpdate;
-        private readonly object @lock = new object();
 
         public Clock()
         {
@@ -32,12 +36,9 @@ namespace TimelineApp
 
         public void Seek(TimeSpan time)
         {
-            lock (@lock)
-            {
-                IsPlaying = false;
-                currentTime = time;
-                NotifyNewTimeValue();
-            }
+            IsPlaying = false;
+            CurrentTime = time;
+            NotifyNewTimeValue();
         }
 
         public void Pause()
@@ -52,29 +53,26 @@ namespace TimelineApp
 
         private void Tick()
         {
-            lock (@lock)
+            if (!IsPlaying)
             {
-                if (!IsPlaying)
-                {
-                    lastUpdate = null;
-                    return;
-                }
-
-                if (currentTime == null)
-                {
-                    currentTime = TimeSpan.Zero;
-                }
-
-                var diff = DateTime.Now - (lastUpdate ?? DateTime.Now);
-                currentTime += diff;
-                lastUpdate = DateTime.Now;
-                NotifyNewTimeValue();
+                lastUpdate = null;
+                return;
             }
+
+            if (CurrentTime == null)
+            {
+                CurrentTime = TimeSpan.Zero;
+            }
+
+            var diff = DateTime.Now - lastUpdate;
+            CurrentTime += diff ?? TimeSpan.Zero;
+            lastUpdate = DateTime.Now;
+            NotifyNewTimeValue();
         }
 
         private void NotifyNewTimeValue()
         {
-            OnNewTimeValue(new NewTimeValueEventArg(currentTime.Value));
+            OnNewTimeValue(new NewTimeValueEventArg(CurrentTime.Value));
         }
 
         private void OnNewTimeValue(NewTimeValueEventArg eventArgs)

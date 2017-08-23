@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace TimelineApp
@@ -37,14 +38,12 @@ namespace TimelineApp
             InitializeComponent();
 
             clock = new Clock();
-
             clock.NewTimeValue += ClockOnNewTimeValue;
-
             clock.Play();
-
-            var tester = new BlackBoxTester(this);
-            tester.Start();
         }
+
+        private bool isPlaying;
+        private readonly MultiThreadingSeekFilter continuityFilter = new MultiThreadingSeekFilter(TimeSpan.FromSeconds(.1), dropThreshold:2);
 
         public void PlayPause()
         {
@@ -61,28 +60,30 @@ namespace TimelineApp
 
         public void Seek()
         {
-            var seekTime = TimeSpan.FromSeconds(1);
-            clock.Seek(seekTime);
-            maxVal = seekTime;
+            var time = TimeSpan.FromSeconds(1);
+            clock.Seek(time);
+            maxVal = time;
         }
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
         {
+            continuityFilter.Filter(arg.Time, Thread.CurrentThread.IsBackground);
+
             Thread.Sleep(10);
 
             UpdateUI();
 
-            if (arg.Time > maxVal)
+            if (continuityFilter.CurrentValue > maxVal)
             {
                 Debug.Print("Spurious time value");
             }
 
-            TimeValue = arg.Time;
+            TimeValue = continuityFilter.CurrentValue;
         }
 
         private void UpdateUI()
         {
-            Dispatcher.BeginInvoke(new Action(() =>
+            Dispatcher.Invoke(new Action(() =>
             {
                 count++;
                 Debug.Print($"Count: {count++}");
