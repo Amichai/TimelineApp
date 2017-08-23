@@ -10,7 +10,7 @@
     <Grid>
         <StackPanel>
             <TextBlock Text="{Binding TimeValue}"></TextBlock>
-            <Button Click="Reset_OnClick">Seek</Button>
+            <Button Click="Seek_OnClick">Seek</Button>
             <Button Click="Pause_OnClick">Play/Pause</Button>
         </StackPanel>
     </Grid>
