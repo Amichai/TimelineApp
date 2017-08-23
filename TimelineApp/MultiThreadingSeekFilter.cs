@@ -18,7 +18,7 @@ namespace TimelineApp
             this.dropThreshold = dropThreshold;
         }
 
-        public void Filter(TimeSpan newTimeValue, bool isBackgroundThread)
+        public TimeSpan Filter(TimeSpan newTimeValue, bool isBackgroundThread)
         {
             lock (@lock)
             {
@@ -27,7 +27,7 @@ namespace TimelineApp
                     if (currentTimeValue == null)
                     {
                         UpdateCurrentTime(newTimeValue);
-                        return;
+                        return currentTimeValue.Value;
                     }
 
                     var diff = newTimeValue - currentTimeValue.Value;
@@ -45,6 +45,8 @@ namespace TimelineApp
                     UpdateCurrentTime(newTimeValue);
                 }
             }
+
+            return currentTimeValue.Value;
         }
 
         private void UpdateCurrentTime(TimeSpan time)

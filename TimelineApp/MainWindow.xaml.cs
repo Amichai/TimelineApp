@@ -1,9 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace TimelineApp
@@ -38,7 +38,11 @@ namespace TimelineApp
             InitializeComponent();
 
             clock = new Clock();
-            clock.NewTimeValue += ClockOnNewTimeValue;
+            Observable.FromEventPattern<NewTimeValueEventArg>(handler => clock.NewTimeValue += handler,
+                handler => clock.NewTimeValue -= handler)
+                .Select(arguments => arguments.EventArgs)
+                .Select(eventArg => continuityFilter.Filter(eventArg.Time, Thread.CurrentThread.IsBackground))
+                .Subscribe(time => ProcessNewTimeValue());
             clock.Play();
         }
 
@@ -65,10 +69,8 @@ namespace TimelineApp
             maxVal = time;
         }
 
-        private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
+        private void ProcessNewTimeValue()
         {
-            continuityFilter.Filter(arg.Time, Thread.CurrentThread.IsBackground);
-
             Thread.Sleep(10);
 
             UpdateUI();
