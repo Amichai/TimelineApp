@@ -30,6 +30,7 @@ namespace TimelineApp
 
         private readonly Clock clock;
         private TimeSpan maxVal = TimeSpan.MaxValue;
+        private int count;
 
         public MainWindow()
         {
@@ -40,6 +41,9 @@ namespace TimelineApp
             clock.NewTimeValue += ClockOnNewTimeValue;
 
             clock.Play();
+
+            var tester = new BlackBoxTester(this);
+            tester.Start();
         }
 
         public void PlayPause()
@@ -64,7 +68,9 @@ namespace TimelineApp
 
         private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
         {
-            Thread.Sleep(80);
+            Thread.Sleep(10);
+
+            UpdateUI();
 
             if (arg.Time > maxVal)
             {
@@ -72,6 +78,15 @@ namespace TimelineApp
             }
 
             TimeValue = arg.Time;
+        }
+
+        private void UpdateUI()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                count++;
+                Debug.Print($"Count: {count++}");
+            }));
         }
 
         private void Seek_OnClick(object sender, RoutedEventArgs e)
