@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace TimelineApp
 {
@@ -13,14 +14,20 @@ namespace TimelineApp
             private set;
         }
 
-        private readonly Timer timer;
         private TimeSpan? currentTime;
         private DateTime? lastUpdate;
         private readonly object @lock = new object();
 
         public Clock()
         {
-            timer = new Timer(state => Tick(), null, 0, 10);
+            new TaskFactory().StartNew(() =>
+            {
+                while (true)
+                {
+                    Tick();
+                    Thread.Sleep(10);
+                }
+            }, TaskCreationOptions.LongRunning);
         }
 
         public void Seek(TimeSpan time)
