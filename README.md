@@ -1,13 +1,14 @@
 # Navigating Time in C#
 
+> One of Tlön's schools manages to refute time, reasoning that the present is indeterminate, that the future has no reality except as present hope, and that the past has no reality except as present memory. Another school claims that all time has already passed and that our lives are barely the memory or dim reflection, doubtless falsified and distorted, of an irrecoverable process. Another, that the history of the world - and in it our lives and every least detail of our lives - is the scripture produced by a lesser god to communicate with a demon. Another, that the world is comparable to those codes in which some symbols have no meaning and the only truth is what takes place every three hundred nights.
+
+  -- Jorge Luis Borges, _Tlön, Uqbar, Orbis Tertius_
+
+
 > The whole universe of concrete objects, as we know them, swims…in a wider and higher universe of abstract ideas, that lend it its significance…time, space, and the ether soak through all things…form the background for all our facts, the fountain-head of all the possibilities we conceive of…We can never look directly at them, for they are bodiless and featureless and footless, but we grasp all other things by their means.
 
  -- William James, _The Varieties of Religious Experience_
 
-
-> One of Tlön's schools manages to refute time, reasoning that the present is indeterminate, that the future has no reality except as present hope, and that the past has no reality except as present memory. Another school claims that all time has already passed and that our lives are barely the memory or dim reflection, doubtless falsified and distorted, of an irrecoverable process. Another, that the history of the world - and in it our lives and every least detail of our lives - is the scripture produced by a lesser god to communicate with a demon. Another, that the world is comparable to those codes in which some symbols have no meaning and the only truth is what takes place every three hundred nights.
-
-  -- Jorge Luis Borges, _Tlön, Uqbar, Orbis Tertius_
 
 ## “Timeline Applications”
 “Timeline applications” is a term I invented, which I define to mean: "an application that has a timeline component and supports playback." Video and audio playing and editing software is the most common software of this kind, although there are exotic variations on this theme as well. Timeline applications allow users to navigate forward and backward in time and support a playback mode where the application automatically plays through the timeline in “real-time.” 
@@ -273,7 +274,7 @@ A central question that any developer needs to grapple with when writing multi-t
 
 In practice, we’re concerned about processing spurious and inconsistent time-values that can periodically break seeking or scrolling on the timeline, but rare seek and scrolling glitches are far more tolerable than equally rare crashes or deadlocks. In practice, we may be willing to exchange an occasionally glitchy seek for increased confidence that our application won’t ever deadlock. 
 
-## Conceptualizing User States
+## Conceptualizing Time
 
 > Broadly speaking, there are two major sources of date and time data: clocks, and the brains of users.
 > 
@@ -281,7 +282,7 @@ In practice, we’re concerned about processing spurious and inconsistent time-v
 > 
 > There are some areas of overlap, of course: a user can enter their date of birth, which is a coarse representation of a specific clock time. Or you may have someone manually logging events somewhere, with that log later being reconciled with system-generated events. These can sometimes lead to grey areas with no one "right" decision, but I would still tend to consider these as user data.
 
-http://nodatime.org/2.2.x/userguide/type-choices
+Source: http://nodatime.org/2.2.x/userguide/type-choices
 
 So far, our investigation has left us with two questions: 1) how do we accomplish a timeline seek in a way that is both coherent, consistent and safe? 2) why is this problem that seems so simple, so surprisingly hard to solve? 
 
