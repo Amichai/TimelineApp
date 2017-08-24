@@ -2,20 +2,19 @@
 
 namespace TimelineApp
 {
-    internal sealed class MultiThreadingSeekFilter
+    internal sealed class ClockSeekFilter
     {
         public TimeSpan CurrentValue => currentTimeValue ?? TimeSpan.Zero;
 
         private int dropCount;
         private TimeSpan? currentTimeValue;
         private readonly TimeSpan continuityThreshold;
-        private readonly int dropThreshold;
+        private const int dropThreshold = 3;
         private readonly object @lock = new object();
 
-        public MultiThreadingSeekFilter(TimeSpan continuityThreshold, int dropThreshold)
+        public ClockSeekFilter(TimeSpan continuityThreshold)
         {
             this.continuityThreshold = continuityThreshold;
-            this.dropThreshold = dropThreshold;
         }
 
         public TimeSpan Filter(TimeSpan newTimeValue, bool isBackgroundThread)

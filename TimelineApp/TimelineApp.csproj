@@ -92,7 +92,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MultiThreadingSeekFilter.cs" />
+    <Compile Include="ClockSeekFilter.cs" />
     <Compile Include="NewTimeValueEventArg.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>

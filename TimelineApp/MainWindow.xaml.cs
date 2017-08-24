@@ -47,7 +47,7 @@ namespace TimelineApp
         }
 
         private bool isPlaying;
-        private readonly MultiThreadingSeekFilter continuityFilter = new MultiThreadingSeekFilter(TimeSpan.FromSeconds(.1), dropThreshold:2);
+        private readonly ClockSeekFilter continuityFilter = new ClockSeekFilter(TimeSpan.FromSeconds(.1));
 
         public void PlayPause()
         {
