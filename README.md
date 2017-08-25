@@ -7,43 +7,26 @@
 
 > The whole universe of concrete objects, as we know them, swims…in a wider and higher universe of abstract ideas, that lend it its significance…time, space, and the ether soak through all things…form the background for all our facts, the fountain-head of all the possibilities we conceive of…We can never look directly at them, for they are bodiless and featureless and footless, but we grasp all other things by their means.
 
- -- William James, _The Varieties of Religious Experience_
+  -- William James, _The Varieties of Religious Experience_
 
 
-## “Timeline Applications”
-“Timeline applications” is a term I invented, which I define to mean: "an application that has a timeline component and supports playback." Video and audio playing and editing software is the most common software of this kind, although there are exotic variations on this theme as well. Timeline applications allow users to navigate forward and backward in time and support a playback mode where the application automatically plays through the timeline in “real-time.” 
+## Introduction - The Closed Captions Editor
 
-For the last few months, I’ve been working on a timeline application at Articulate: a Closed Caption Editor that allows users to create and modify captions for their audio and video media. This project allowed me to work on and think deeply about some the multi-threading challenges that are characteristic of these projects.
+For the past few months, I’ve been working on a new piece of Articulate software: a Closed Captions Editor that allows users to create and modify captions for their audio and video media. This project allowed me to work on and think deeply about some of the multi-threading challenges that are characteristic of software that exposes a timeline, supports a playback mode and allow users to navigate forward and backward through time on this timeline.
 
 ![The Closed Captions Editor](https://github.com/Amichai/TimelineApp/blob/master/Images/CCE.png "The Closed Captions Editor")
 
+_Disclaimer:_ I am not a C#-multi-threading expert. The "correctness" I target in the real-world and in this blog post is the "correctness" that passes the black-box testing I describe in the "verification" section of this post.
  
 ## Timeline Application First-Pass
-At the heart of any timeline application is some component dedicated to driving playback and keeping track of the current time. During playback mode, this component volunteers the sequence of time values that cause the UI to update in a continuous progression of frames. We’ll call this component a “clock.” In its most simple C# iteration, we can imagine our clock built on a `System.Threading.Timer` timer and a `TimeSpan currentTime` field that gets progressed forward in time on each tick of the timer. For our clock to be more useful, it might also expose: `Play()`, `Pause()`, `Stop()` and `Seek()` methods. In our implementation, `Seek()` first pauses playback before seeking to the desired position on the timeline.
-(In the Closed Captions Editor, our clock component was also our media playback component.)
+
+At the heart of any "timeline application" is some component dedicated to driving playback and keeping track of the current time. During playback mode, this component volunteers the sequence of time values that cause the UI to update in a continuous progression of frames. We’ll call this component a “clock.” In its most simple C# iteration, we can imagine our clock built on a `System.Threading.Timer` timer and a `TimeSpan currentTime` field that gets progressed forward in time on each tick of the timer. For our clock to be more useful, it might also expose: `Play()`, `Pause()`, `Stop()` and `Seek()` methods and a `NewTimeValue` `EventHandler`. For this implementation, `Seek()` first pauses playback before seeking to the desired position on the timeline. (In the Closed Captions Editor, our clock component was also our media playback component.)
 
 In C#, a simple version of this clock might be:
 
 ```
 internal sealed class Clock
 {
-    public event EventHandler<NewTimeValueEventArg> NewTimeValue;
-
-    public bool IsPlaying
-    {
-        get;
-        private set;
-    }
-
-    public TimeSpan? CurrentTime
-    {
-        get;
-        private set;
-    }
-
-    private readonly Timer timer;
-    private DateTime? lastUpdate;
-
     public Clock()
     {
         timer = new Timer(state => Tick(), null, 0, 10);
@@ -54,16 +37,6 @@ internal sealed class Clock
         IsPlaying = false;
         CurrentTime = time;
         NotifyNewTimeValue();
-    }
-
-    public void Pause()
-    {
-        IsPlaying = false;
-    }
-
-    public void Play()
-    {
-        IsPlaying = true;
     }
 
     private void Tick()
@@ -84,16 +57,6 @@ internal sealed class Clock
         lastUpdate = DateTime.Now;
         NotifyNewTimeValue();
     }
-
-    private void NotifyNewTimeValue()
-    {
-        OnNewTimeValue(new NewTimeValueEventArg(CurrentTime.Value));
-    }
-
-    private void OnNewTimeValue(NewTimeValueEventArg eventArgs)
-    {
-        NewTimeValue?.Invoke(this, eventArgs);
-    }
 }
 ```
 
@@ -102,22 +65,7 @@ Around this clock we can build a UI with a timeline and other components that ch
 ```
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
-    public event PropertyChangedEventHandler PropertyChanged;
-
-    //Data-bound to the UI:
-    private TimeSpan timeValue;
-    public TimeSpan TimeValue
-    {
-        get
-        {
-            return timeValue;
-        }
-        set
-        {
-            timeValue = value;
-            OnPropertyChanged();
-        }
-    }
+    ...
 
     private readonly Clock clock;
 
@@ -130,18 +78,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         clock.Play();
     }
 
-    public void PlayPause()
-    {
-        if (clock.IsPlaying)
-        {
-            clock.Pause();
-        }
-        else
-        {
-            clock.Play();
-        }
-    }
-
     public void Seek()
     {
         var seekTime = TimeSpan.FromSeconds(1);
@@ -151,21 +87,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ClockOnNewTimeValue(object sender, NewTimeValueEventArg arg)
     {
         TimeValue = arg.Time;
-    }
-
-    private void Seek_OnClick(object sender, RoutedEventArgs e)
-    {
-        Seek();
-    }
-
-    private void PlayPause_OnClick(object sender, RoutedEventArgs e)
-    {
-        PlayPause();
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 ```
@@ -256,7 +177,7 @@ It works!
 
 ## Deadlocks ☹
 
-….until we try to do any UI related work inside our `ClockOnNewTimeValue()` method. Now we’re exposed to nasty deadlock.
+….until we try to do any UI related work inside our `ClockOnNewTimeValue()` method. Now we’re exposed to a nasty deadlock.
 
 Our breaking scenario: the user clicks on the UI to perform the `Seek()` operation from the dispatcher thread, and is blocked on clock’s `@lock` lock. Simultaneously, the `@lock` has been acquired by a `Tick()` invocation which is blocked on the dispatcher thread trying to perform a `Dispatcher.Invoke()` operation inside `ClockOnNewTimeValue()`.
 
@@ -268,7 +189,7 @@ Although appealing at first glance, another reason to be skeptical of this afore
 
 ## Some General Thoughts on Thread-Safety 
 
-Deadlock bugs are terrible. A deadlock generally means: a) all unsaved application state is lost, b) the application won’t crash so no diagnostics or errors get reported, c) the user is stuck with a frozen application that they must kill from the task manager, d) we are dealing with a rare, non-determinist, hard to reproduce and hard to diagnose bug that haunts the dreams of developers, testers and managers.
+Deadlock bugs are terrible. A deadlock generally means: a) all unsaved application state is lost, b) the application won’t crash so no diagnostics or errors get reported, c) the user is stuck with a frozen application that they must kill from the task manager, d) we are dealing with a rare, non-deterministic, hard to reproduce and hard to diagnose bug that haunts the dreams of developers, testers and managers.
 
 A central question that any developer needs to grapple with when writing multi-threaded code – "what does thread-safety mean to me?" At a basic level, “thread-safe” means that our application won’t crash because of a cross-thread access exception, and won’t deadlock. But “thread-safe” means something significantly different in the context of our timeline application. For us, “thread-safe” means enforcing an order in the `NewTimeValue` events that we process. For us, “thread-safe” means guaranteeing a coherence and consistency in our time processing logic and the contours of this consistency are unique to the application we happen to be working on the specific requirements we’re trying to meet.
 
@@ -288,11 +209,11 @@ So far, our investigation has left us with two questions: 1) how do we accomplis
 
 This problem is surprisingly hard to solve because we are using a single method and a single data-type for handling time values that come from user input (a seek operation) and time values that come from an underlying clock tick.
 
-On the one hand, when a user seeks to point on the timeline, we expect the UI to reflect the same state that would result from traversing that same point on the timeline during timeline playback. However, from a philosophical perspective, these two sources of time values are completely distinct and they operate in profoundly different ways. For example, we expect clock time values being pumped in the context of a playback operation to be roughly continuous. User-generated time values on the other-hand are always expected to be discontinuous (for most applications, we don’t expect and don’t care to support a user trying to navigate through the timeline in 10 millisecond step sizes). Clock generated time-values are produced at a high frequency, and are subject to subtle back-pressure bugs and spurious/invalid value bugs – not so for user generated time-values. In other words, to achieve thread safety in our context we need to enforce a sense of thread-safety that is rooted in the specific dynamics of user-time and clock-time as defined by the usages and requirements of our application.
+On the one hand, when a user seeks to point on the timeline, we expect the UI to reflect the same state that would result from traversing that same point on the timeline during timeline playback. However, from a philosophical perspective, these two sources of time values are completely distinct and they operate in profoundly different ways. For example, we expect clock time values being pumped in the context of a playback operation to be roughly continuous. User-generated time values on the other-hand are always expected to be discontinuous (for most applications, we don’t expect and don’t care to support a user trying to navigate through the timeline in 10 millisecond step sizes). Clock generated time-values are produced at a high frequency, and are subject to subtle back-pressure bugs and spurious/invalid value bugs – not so for user-generated time-values. In other words, to achieve thread safety in our context we need to enforce a sense of thread-safety that is rooted in the specific dynamics of user-time and clock-time as defined by the usages and requirements of our application.
 
-Thread safety in the context of our time-driven application means that user-generated time values are always respected and given precedence over clock-generated values. Thread safety means we should never be dropping a user initiated time value, but we are cautiously incredulous of clock generated values and we don’t have a problem dropping some of those if we think there’s a chance they might be stale or spurious. Armed with these assumptions, we can achieve our desired sense of thread-safety by explicitly noting the source of the time value we’re seeing and handling it accordingly.
+Thread safety in the context of our time-driven application means that user-generated time values are always respected and given precedence over clock-generated values. Thread safety means we should never be dropping a user initiated time value, but we are cautiously skeptical of clock generated values and we don’t have a problem dropping some of those if we think there’s a chance they might be stale or spurious. Armed with these assumptions, we can achieve our desired sense of thread-safety by explicitly noting the source of the time value we’re seeing and handling it accordingly.
 
-Two solutions of this category can be considered:
+Two solutions of this category, each with their own risks and tradeoffs, can be considered:
 
 _Solution #1:_
 
@@ -300,7 +221,7 @@ The `NewTimeValue` callback is modified to include a parameter that indicates wh
 
 _Solution #2:_
 
-We can write a filter that sits on top of the `NewTimeValue` event and is solely responsible for maintaining the current time value. This `ClockSeekFilter` knows to always honor time values coming from a foreground thread, but has the liberty to ignore time values that come from a background thread if that time value is sufficiently surprising (discontinuous from the last assumed current time value). If however, we get three surprising clock values in a row, we will throw out our original assumption about the current time and defer to the new clock-driven assumption.
+We can write a filter that sits on top of the `NewTimeValue` event and is solely responsible for maintaining the current time value. This `ClockSeekFilter` knows to always honor time values coming from a foreground thread, but has the liberty to ignore time values that come from a background thread if that time value is sufficiently surprising (discontinuous from the last assumed current time value). If however, we get three surprising clock values in a row, we will throw out our original assumption about the current time and defer to the new clock-driven assumption:
 
 ```
 internal sealed class ClockSeekFilter
@@ -318,7 +239,7 @@ internal sealed class ClockSeekFilter
         this.continuityThreshold = continuityThreshold;
     }
 
-    public TimeSpan Filter(TimeSpan newTimeValue, bool isBackgroundThread)
+    public void Filter(TimeSpan newTimeValue, bool isBackgroundThread)
     {
         lock (@lock)
         {
@@ -327,7 +248,7 @@ internal sealed class ClockSeekFilter
                 if (currentTimeValue == null)
                 {
                     UpdateCurrentTime(newTimeValue);
-                    return currentTimeValue.Value;
+                    return;
                 }
 
                 var diff = newTimeValue - currentTimeValue.Value;
@@ -345,8 +266,6 @@ internal sealed class ClockSeekFilter
                 UpdateCurrentTime(newTimeValue);
             }
         }
-
-        return currentTimeValue.Value;
     }
 
     private void UpdateCurrentTime(TimeSpan time)
@@ -357,7 +276,7 @@ internal sealed class ClockSeekFilter
 }	
 ```
 
-With reactive extensions, this `ClockSeekFilter` method allows us to handle time events as follows:
+With Reactive Extensions, this `ClockSeekFilter` method allows us to achieve our goal of "thread safety" with a completely modular filter-component as follows:
 ```
 public MainWindow()
 {
@@ -372,6 +291,65 @@ public MainWindow()
 }
 ```
 
+_Notice:_
+
+Notice we aren't returning `currentTimeValue` outside of `Filter` and passing that value to `ProcessNewTimeValue`. For `ClockSeekFilter` to be effectiev we can only allow for one source of "ground truth" and that source must be the `CurrentTimeValue` property in `ClockSeekFilter` whose value is only set under a class-local lock. If we were to return a `CurrentTimeValue` value outside of our filter, we would be leaking independent and potentially stale notions of the current-time into our application logic. Specifically, if `Filter()` returned a time value from the clock running on a background thread, and then immediately returned a different and updated time value from a UI interaction, we can make no guarantees about the order in which these two values would get processed in `ProcessNewTimeVaule()`, thereby reintroducing the original race-condition we were trying to fix.
+
+## Verification
+
+How can I be confident that the solutions I suggest here are effective? Is it because I’m a multi-threading expert? No. It’s because I wrote a test harness that exercises `PlayPause()` and `Seek()` in a tight loop and is simultaneously testing to see that the dispatcher can be acquired so we know we haven’t deadlocked. For each proposed solution, I let this test-harness run for some time to gain confidence that the application doesn't crash or deadlock. 
+
+`BlackBoxTester`:
+
+
+```
+public BlackBoxTester(MainWindow window)
+{
+    this.window = window;
+}
+
+public void Start()
+{
+    t1 = new Timer(state =>
+    {
+        window.Dispatcher.Invoke(() =>
+        {
+            window.Seek();
+            Thread.Sleep(10);
+            window.PlayPause();
+        });
+    }, null, 0, 50);
+
+    t2 = new Timer(state =>
+    {
+        var task = Task.Run(() => TestForDeadlock());
+        if (!task.Wait(TimeSpan.FromSeconds(1)))
+        {
+            Environment.FailFast("Deadlock");
+        }
+    }, null, 0, 50);
+}
+
+private void TestForDeadlock()
+{
+    window.Dispatcher.Invoke(() =>
+    {
+        count++;
+    });
+}
+```
+
+When dealing with complex multi-threading applications, this kind of black-box testing is generally the only reliable way to gain confidence in the correctness of one's code.
+
+
 ## Conclusion
 
-How can I be confident that the solutions I suggest here are effective? Is it because I’m a multi-threading expert? No. It’s because I wrote a test harness that exercises `PlayPause()` and `Seek()` in a tight loop and is simultaneously testing to see that the dispatcher can be acquired so we know we haven’t deadlocked. For each proposed solution, I let this test-harness run for some time to gain confidence that the application doesn't crash or deadlock. When dealing with complex multi-threading applications, this kind of black-box testing is the only reliable way to gain confidence in the correctness of one's code.
+Philosophers and scientists have long debated how to understand time. At the heart of this debate is a dichotomy between a conception of time as an absolute frame-of-reference that encompasses and animates all of nature on the one hand, and a conception of time that allows for an abundance of contradictory times and timelines and independent notions of temporality. 
+
+Einstein’s Theory of Relativity revolutionized classical notions about the immutability of time by describing time as a dimension that could be warped and distorted and could pass at different speeds for different observers. In his [_New Refutation of Time_](http://heavysideindustries.com/wp-content/uploads/2010/10/borges-a-new-refutation-of-time.pdf "A New Refutation of Time"), Borges makes the more extreme claim that time is the construction of subjective consciousness and that time has no reality outside of subjective human and psychological experience.
+
+This dichotomy between time as an absolute framework of perfectly sorted successions, and time as a localized and individuated notion that allows for contradiction, subjectivity and indeterminacy is a dichotomy to be negotiated when architecting clock-driven software. As developers, we can choose to enforce a single, sequential timeline of instants that drives the progress of our application in lock-step and whose manipulations and effects are all atomized. However, this construction of a single “ground-truth” notion of time is not without its costs. Alternatively, we can embrace an abundance of times, a polyphony of moments, and a variety of perspectives on temporality and negotiate questions of order and coherence “down-stream.”
+
+> Our destiny…is not frightful by being unreal; it is frightful because it is irreversible and iron-clad. Time is the substance I am made of. Time is a river which sweeps me along, but I am the river; it is a tiger which destroys me, but I am the tiger; it is a fire which consumes me, but I am the fire. The world, unfortunately, is real; I, unfortunately, am Borges.
+
+  -- Jorge Luis Borges, _A New Refutation of Time_
